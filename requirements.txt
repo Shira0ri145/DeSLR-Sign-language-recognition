@@ -1,0 +1,5 @@
+jupyter
+numpy
+pandas
+matplotlib
+git+https://github.com/openai/whisper.git
