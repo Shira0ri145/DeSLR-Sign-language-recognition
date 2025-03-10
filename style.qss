@@ -1,0 +1,133 @@
+/* BG */
+QMainWindow {
+    background: qlineargradient(
+        x1: 0.4, y1: 0.5,       /* ซ้ายบน */
+        x2: 0.92, y2: 0.8,       /* ขวาล่าง */
+        stop: 0 #269272,    /* สีเริ่ม */
+        stop: 1 #174A4E     /* สีจบ */
+    );
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#mainTitle {
+    font-size: 40px;
+    font-weight: bold;
+    color: #FFFFFF;
+    padding-right: 10px;
+    padding-left: 20px;
+}
+
+#subTitle {
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    font-family: "Sukhumvit Set", "Inter", sans-serif;
+}
+
+
+#guideFrame {
+    background: qlineargradient(
+        x1: 0, y1: 0,        
+        x2: 1, y2: 1,        
+        stop: 0 #E5F8F9,     
+        stop: 1 #D5DEDE      
+    );
+    border-radius: 22px;
+    padding: 10px 15px; /* ลดขนาด Padding ลง */
+    margin-left: 10px;
+    margin-bottom: 20px;
+    max-width: 350px; /* ลดขนาดความกว้างของ Guide */
+}
+
+
+#guideTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2E7D32;
+    margin-bottom: 15px;
+    margin-left : 30px;
+    margin-right: 30px;
+    padding: 10px 20px; /* ระยะห่างจากขอบ */
+    border: 1px solid #269272; /* กรอบสีเขียว */
+    background-color: rgba(38, 146, 114, 0.1); /* สีพื้นหลังเขียวจาง 10% */
+    border-radius: 8px; /* มุมโค้งมน */
+    text-align: center;
+}
+
+#guideStep {
+    font-size: 18px;
+    color: #555555;
+}
+
+
+#handSignText {
+    font-size: 17px;
+    font-weight: normal;
+    color: #6C7070;
+    text-align: center;
+    font-family: "Sukhumvit Set", "Inter", sans-serif;
+    
+}
+
+#cameraView {
+    background: qlineargradient(
+        x1: 0, y1: 0,        
+        x2: 1, y2: 1,        
+        stop: 0 #E5F8F9,     
+        stop: 1 #D5DEDE      
+    );
+    border-radius: 22px;
+    margin-bottom: 20px;
+    max-width: 700px; /* เพิ่มความกว้างให้ฝั่งขวาใหญ่ขึ้น */
+}
+
+#recordButton {
+    background-color: #FF3B30;
+    border-radius: 40px;
+    border: none;
+}
+
+#recordButton:hover {
+    background-color: #E53935;
+}
+
+QPushButton#startButton:hover {
+    background-color: #357ABD;
+}
+
+
+/* 🌐 Bubble ของข้อความฝั่งขวา */
+QLabel#rightBubble {
+    background-color: #4A90E2;
+    color: white;
+    padding: 15px;
+    border-radius: 20px;
+    font-size: 16px;
+    max-width: 250px;
+    position: relative;
+}
+
+/* 🌐 Bubble ของข้อความฝั่งซ้าย */
+QLabel#leftBubble {
+    background-color: #E5E5EA;
+    color: black;
+    padding: 15px;
+    border-radius: 20px;
+    font-size: 16px;
+    max-width: 250px;
+    position: relative;
+}
+
+/* 📸 รูปโปรไฟล์ของผู้ใช้ */
+QLabel#userImage, QLabel#rightImage {
+    border: 2px solid gray;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+/* 🔵 รูปโปรไฟล์กลม */
+QLabel#profilePic {
+    border-radius: 25px;
+    border: 2px solid #4A90E2;
+}
