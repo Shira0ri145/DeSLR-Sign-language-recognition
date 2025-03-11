@@ -1,7 +1,14 @@
-from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QFrame
-from PyQt6.QtGui import QPixmap, QIcon, QKeyEvent
-from PyQt6.QtCore import Qt
+import sys
+import cv2
+import numpy as np
 
+from PyQt6.QtWidgets import (
+    QApplication, QLabel, QMainWindow, QWidget, QVBoxLayout, 
+    QHBoxLayout, QPushButton, QStackedWidget, QFrame, QSpacerItem, QSizePolicy
+)
+from PyQt6.QtGui import QPixmap, QKeyEvent
+from PyQt6.QtCore import Qt, QSize, QTimer
+import qtawesome as qta
 
 class StartPage(QWidget):
     def __init__(self, switch_callback):
@@ -58,7 +65,7 @@ class StartPage(QWidget):
         step_layout = QHBoxLayout()
 
         step1_layout = QVBoxLayout()
-        step1 = QLabel("Step 1: เอามือแตะหน้าผาก")
+        step1 = QLabel("Step 1: มือแตะหน้าผาก")
         step1.setObjectName("guideStep")
         step1_img = QLabel()
         step1_img.setPixmap(QPixmap("assets/Coff1.png").scaled(105, 180, Qt.AspectRatioMode.KeepAspectRatio))
@@ -68,7 +75,7 @@ class StartPage(QWidget):
         step1_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         step2_layout = QVBoxLayout()
-        step2 = QLabel("Step 2: แล้วเอามือผายออก")
+        step2 = QLabel("Step 2: เอามือผายออก")
         step2.setObjectName("guideStep")
         step2_img = QLabel()
         step2_img.setPixmap(QPixmap("assets/Coff2.png").scaled(105, 180, Qt.AspectRatioMode.KeepAspectRatio))
@@ -100,81 +107,154 @@ class StartPage(QWidget):
         guide_frame.setObjectName("guideFrame")
 
         # --- ขวา: กล้อง + ปุ่มวางสาย ---
-        right_frame = QFrame()
-        right_layout = QVBoxLayout()
-
-        # ✅ สร้าง QVBoxLayout ใหม่สำหรับกล้องและปุ่ม
+        camera_frame = QFrame()
         camera_layout = QVBoxLayout()
-        camera_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        camera_frame.setObjectName("cameraFrame")
 
-        camera_view = QLabel()
-        camera_view.setPixmap(QPixmap("assets/cafe.png").scaled(500, 300, Qt.AspectRatioMode.KeepAspectRatio))
-        camera_view.setObjectName("cameraView")
+        camera_label = QLabel("Loading Camera...")
+        camera_label.setObjectName("cameraText")
+        camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        right_layout.addWidget(camera_view)
-        right_frame.setLayout(right_layout)
+        top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        # ✅ สถานะกล้อง (เปิด/ปิด)
+        self.is_camera_on = True
+
+        # ✅ ปุ่มใส (ไมค์ และ กล้อง)
+        mic_button = QPushButton()
+        mic_button.setIcon(qta.icon("fa6s.microphone", color="black"))
+        mic_button.setObjectName("micButton")
+        mic_button.setFixedSize(60, 60)
+        mic_button.setIconSize(QSize(27, 27))
+
+        self.camera_button = QPushButton()
+        self.camera_button.setIcon(qta.icon("fa6s.video", color="black"))  # เริ่มต้นเป็นเปิดกล้อง
+        self.camera_button.setObjectName("cameraButton")
+        self.camera_button.setFixedSize(60, 60)
+        self.camera_button.setIconSize(QSize(25, 25))
+        self.camera_button.clicked.connect(self.toggle_camera)
+
+        open_button = QPushButton()
+        open_button.setIcon(qta.icon("fa6s.phone"))
+        open_button.setObjectName("openButton")
+        open_button.setFixedSize(60, 60)
+        open_button.setIconSize(QSize(20, 20))
+        open_button.clicked.connect(switch_callback)
+
+        left_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        right_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+
+        button_layout = QHBoxLayout()
+        button_layout.addItem(left_spacer)
+        button_layout.addWidget(mic_button, alignment=Qt.AlignmentFlag.AlignRight)
+        button_layout.addWidget(open_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        button_layout.addWidget(self.camera_button, alignment=Qt.AlignmentFlag.AlignLeft)
+        button_layout.addItem(right_spacer)
+
+        camera_layout.addItem(top_spacer)
+        camera_layout.addWidget(camera_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        camera_layout.addItem(bottom_spacer)
+        camera_layout.addLayout(button_layout)
+
+        camera_frame.setLayout(camera_layout)
 
         content_layout.addWidget(guide_frame)
-        content_layout.addWidget(right_frame)
+        content_layout.addWidget(camera_frame)
 
         main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
 
+    def toggle_camera(self):
+        """ ฟังก์ชันเปิด/ปิดกล้อง """
+        if self.is_camera_on:
+            self.camera_button.setIcon(qta.icon("fa6s.video-slash", color="red"))  # ปิดกล้อง
+        else:
+            self.camera_button.setIcon(qta.icon("fa6s.video", color="black"))  # เปิดกล้อง
+
+        self.is_camera_on = not self.is_camera_on
 
 
 class ChatPage(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Layout หลัก
+        # ✅ Layout หลัก
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(10)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop) 
+        
 
-        # 🎭 รูปโปรไฟล์ฝั่งขวา
-        profile_pic = QLabel()
-        profile_pic.setPixmap(QPixmap("assets/baris.png").scaled(50, 50, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        profile_pic.setObjectName("profilePic")
+        # ✅ "DeSLR" ด้านบนซ้าย
+        title_label = QLabel('<span style="color: white;">De</span><span style="color: #C2FCEA;">SLR</span>')
+        title_label.setObjectName("mainTitle")
+        title_label.setTextFormat(Qt.TextFormat.RichText)
+        main_layout.addWidget(title_label)
 
-        # 💬 กล่องข้อความของคนทางขวา
-        right_text = QLabel("ทั้งหมด 50baht ครับ")
-        right_text.setObjectName("rightBubble")
+        # ✅ Layout ของแชท
+        chat_layout = QVBoxLayout()
+        chat_layout.setSpacing(20)
 
-        # 🖼️ ภาพด้านขวา
-        right_image = QLabel()
-        right_image.setPixmap(QPixmap("assets/baris.png").scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        right_image.setObjectName("rightImage")
+        # --- 🔹 บรรทัดแชท 1: Barista ---
+        barista_chat_layout = QHBoxLayout()
+        barista_chat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # 🔄 Layout สำหรับฝั่งขวา
-        right_layout = QHBoxLayout()
-        right_layout.addWidget(right_text)
-        right_layout.addWidget(profile_pic)
-        right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        barista_img = QLabel()
+        barista_img.setPixmap(QPixmap("assets/wall3.jpg").scaled(320, 180, Qt.AspectRatioMode.KeepAspectRatio))
+        barista_img.setObjectName("chatImage")
 
-        # Layout สำหรับภาพด้านขวา
-        right_image_layout = QHBoxLayout()
-        right_image_layout.addWidget(right_image)
-        right_image_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # 🔹 สร้าง Frame สำหรับข้อความของ Barista
+        barista_frame = QFrame()
+        barista_frame.setObjectName("chatBubbleBarista")
+        barista_frame_layout = QVBoxLayout(barista_frame)
 
-        # 🎭 รูปผู้ใช้ทางซ้าย
-        user_image = QLabel()
-        user_image.setPixmap(QPixmap("assets/user.png").scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        user_image.setObjectName("userImage")
+        barista_name = QLabel("Barista")
+        barista_name.setObjectName("chatNameBarista")
 
-        # 💬 กล่องข้อความของคนทางซ้าย
-        left_text = QLabel("สวัสดี ฉันขอสั่ง ชาเขียวเย็น หวานน้อย 1 แก้วครับ")
-        left_text.setObjectName("leftBubble")
+        barista_text = QLabel("สวัสดี , วันนี้สั่งเมนูอะไรดีคะ ?")
+        barista_text.setObjectName("chatTextBarista")
 
-        # 🔄 Layout สำหรับฝั่งซ้าย
-        left_layout = QHBoxLayout()
-        left_layout.addWidget(user_image)
-        left_layout.addWidget(left_text)
-        left_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        barista_frame_layout.addWidget(barista_name)
+        barista_frame_layout.addWidget(barista_text)
 
-        # ใส่ Layout เข้ากับ Layout หลัก
-        main_layout.addLayout(right_layout)
-        main_layout.addLayout(right_image_layout)
-        main_layout.addLayout(left_layout)
+        barista_chat_layout.addWidget(barista_frame)
+        barista_chat_layout.addWidget(barista_img)
+
+        # --- 🔹 บรรทัดแชท 2: ลูกค้า (คนสั่ง) ---
+        user_chat_layout = QHBoxLayout()
+        user_chat_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        user_img = QLabel()
+        user_img.setPixmap(QPixmap("assets/wall1.jpg").scaled(320, 180, Qt.AspectRatioMode.KeepAspectRatio))
+        user_img.setObjectName("chatImage")
+
+        # 🔹 สร้าง Frame สำหรับข้อความของลูกค้า
+        user_frame = QFrame()
+        user_frame.setObjectName("chatBubbleUser")
+        user_frame_layout = QVBoxLayout(user_frame)
+
+        user_name = QLabel("คุณ (คนสั่ง)")
+        user_name.setObjectName("chatNameUser")
+
+        user_text = QLabel("เอาชาเขียวเย็น หวานน้อย 1 แก้วครับ")
+        user_text.setObjectName("chatTextUser")
+
+        user_frame_layout.addWidget(user_name)
+        user_frame_layout.addWidget(user_text)
+
+        user_chat_layout.addWidget(user_img)
+        user_chat_layout.addWidget(user_frame)
+
+        # ✅ ใส่ทุกอย่างลงใน Layout หลัก
+        chat_layout.addLayout(barista_chat_layout)
+        chat_layout.addLayout(user_chat_layout)
+        main_layout.addLayout(chat_layout)
 
         self.setLayout(main_layout)
+
+        
 
 
 class MainApp(QMainWindow):
