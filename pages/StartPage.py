@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, 
     QHBoxLayout, QPushButton, QFrame, QSpacerItem, QSizePolicy
 )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt, QSize
 import qtawesome as qta
 
 class StartPage(QWidget):
@@ -119,20 +119,20 @@ class StartPage(QWidget):
 
         # ✅ ปุ่มใส (ไมค์ และ กล้อง)
         mic_button = QPushButton()
-        mic_button.setIcon(qta.icon("fa6s.microphone", color="black"))
+        mic_button.setIcon(qta.icon("fa5s.microphone", color="black"))
         mic_button.setObjectName("micButton")
         mic_button.setFixedSize(60, 60)
         mic_button.setIconSize(QSize(27, 27))
 
         self.camera_button = QPushButton()
-        self.camera_button.setIcon(qta.icon("fa6s.video", color="black"))  # เริ่มต้นเป็นเปิดกล้อง
+        self.camera_button.setIcon(qta.icon("fa5s.video", color="black"))  # เริ่มต้นเป็นเปิดกล้อง
         self.camera_button.setObjectName("cameraButton")
         self.camera_button.setFixedSize(60, 60)
         self.camera_button.setIconSize(QSize(25, 25))
         self.camera_button.clicked.connect(self.toggle_camera)
 
         open_button = QPushButton()
-        open_button.setIcon(qta.icon("fa6s.phone"))
+        open_button.setIcon(qta.icon("fa5s.phone"))
         open_button.setObjectName("openButton")
         open_button.setFixedSize(60, 60)
         open_button.setIconSize(QSize(20, 20))

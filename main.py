@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QStackedWidget
 )
-from PyQt6.QtGui import QKeyEvent
-from PyQt6.QtCore import Qt
+from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtCore import Qt
 from pages.ChatPage import ChatPage
 from pages.StartPage import StartPage
 
