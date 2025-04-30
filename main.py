@@ -24,7 +24,7 @@ class MainApp(QMainWindow):
         self.stack.addWidget(self.start_page)
 
         # หน้าแชท
-        self.chat_page = ChatPage()
+        self.chat_page = ChatPage(self.show_start_page)  # ส่งฟังก์ชัน show_start_page ไปยัง ChatPage
         self.stack.addWidget(self.chat_page)
 
         # โหลด QSS
@@ -36,6 +36,10 @@ class MainApp(QMainWindow):
     def show_chat_page(self):
         """เปลี่ยนไปหน้าหลักของแชท"""
         self.stack.setCurrentWidget(self.chat_page)
+
+    def show_start_page(self):
+        """เปลี่ยนไปหน้า StartPage"""
+        self.stack.setCurrentWidget(self.start_page)
 
     def keyPressEvent(self, event: QKeyEvent):
         """เช็คการกด F11 เพื่อสลับ Fullscreen"""

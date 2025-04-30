@@ -2,9 +2,10 @@ from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, 
     QHBoxLayout, QPushButton, QFrame, QSpacerItem, QSizePolicy
 )
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QSize
 import qtawesome as qta
+from scripts import CameraThread
 
 class StartPage(QWidget):
     def __init__(self, switch_callback):
@@ -107,9 +108,16 @@ class StartPage(QWidget):
         camera_layout = QVBoxLayout()
         camera_frame.setObjectName("cameraFrame")
 
-        camera_label = QLabel("Loading Camera...")
-        camera_label.setObjectName("cameraText")
-        camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.camera_label = QLabel("Loading camera...")
+        self.camera_label.setAlignment(Qt.AlignCenter)
+        self.camera_label.setFixedSize(640, 360)
+        self.camera_label.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
+
+        # self.camera_thread = CameraThread()
+        # self.camera_thread.frame_updated.connect(self.update_camera_frame)
+        # self.camera_thread.camera_ready.connect(self.clear_loading_text)
+        # self.camera_thread.start()
+
 
         top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -150,7 +158,7 @@ class StartPage(QWidget):
         button_layout.addItem(right_spacer)
 
         camera_layout.addItem(top_spacer)
-        camera_layout.addWidget(camera_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        camera_layout.addWidget(self.camera_label, alignment=Qt.AlignmentFlag.AlignCenter)
         camera_layout.addItem(bottom_spacer)
         camera_layout.addLayout(button_layout)
 
@@ -161,6 +169,18 @@ class StartPage(QWidget):
 
         main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
+
+    def update_camera_frame(self, image: QImage):
+        """ รับภาพจากกล้องแล้วแสดง """
+        if not image.isNull():
+            pixmap = QPixmap.fromImage(image).scaled(640, 360, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.camera_label.setPixmap(pixmap)
+
+    def clear_loading_text(self):
+        """ ลบข้อความ Loading กล้องออกเมื่อกล้องพร้อม """
+        self.camera_label.setText("")
+
+
 
     def toggle_camera(self):
         """ ฟังก์ชันเปิด/ปิดกล้อง """
