@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, 
-    QHBoxLayout, QPushButton, QFrame, QSpacerItem, QSizePolicy
+    QHBoxLayout, QPushButton, QFrame, QSpacerItem, QSizePolicy, QMessageBox
 )
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QSize
@@ -10,6 +10,8 @@ from scripts import CameraThread
 class StartPage(QWidget):
     def __init__(self, switch_callback):
         super().__init__()
+
+        self.switch_callback = switch_callback
 
         # Layout หลักทั้งหมด
         main_layout = QVBoxLayout()
@@ -65,7 +67,7 @@ class StartPage(QWidget):
         step1 = QLabel("Step 1: มือแตะหน้าผาก")
         step1.setObjectName("guideStep")
         step1_img = QLabel()
-        step1_img.setPixmap(QPixmap("assets/Coff1.png").scaled(105, 180, Qt.AspectRatioMode.KeepAspectRatio))
+        step1_img.setPixmap(QPixmap("assets/signlanghello-1.png").scaled(89, 177, Qt.AspectRatioMode.KeepAspectRatio))
 
         step1_layout.addWidget(step1)
         step1_layout.addWidget(step1_img)
@@ -75,7 +77,7 @@ class StartPage(QWidget):
         step2 = QLabel("Step 2: เอามือผายออก")
         step2.setObjectName("guideStep")
         step2_img = QLabel()
-        step2_img.setPixmap(QPixmap("assets/Coff2.png").scaled(105, 180, Qt.AspectRatioMode.KeepAspectRatio))
+        step2_img.setPixmap(QPixmap("assets/signlanghello-2.png").scaled(89, 177, Qt.AspectRatioMode.KeepAspectRatio))
 
         step2_layout.addWidget(step2)
         step2_layout.addWidget(step2_img)
@@ -113,11 +115,10 @@ class StartPage(QWidget):
         self.camera_label.setFixedSize(640, 360)
         self.camera_label.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
 
-        # self.camera_thread = CameraThread()
-        # self.camera_thread.frame_updated.connect(self.update_camera_frame)
-        # self.camera_thread.camera_ready.connect(self.clear_loading_text)
-        # self.camera_thread.start()
-
+        self.camera_thread = CameraThread(camera_id=1)
+        self.camera_thread.frame_updated.connect(self.update_camera_frame)
+        self.camera_thread.camera_ready.connect(self.clear_loading_text)
+        self.camera_thread.start()
 
         top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -144,7 +145,7 @@ class StartPage(QWidget):
         open_button.setObjectName("openButton")
         open_button.setFixedSize(60, 60)
         open_button.setIconSize(QSize(20, 20))
-        open_button.clicked.connect(switch_callback)
+        open_button.clicked.connect(self.handle_open)
 
         left_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         right_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -170,10 +171,53 @@ class StartPage(QWidget):
         main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
 
+    def start_camera(self):
+        """ สร้าง CameraThread ใหม่ และเปิดกล้อง """
+        if self.camera_thread is not None:
+            try:
+                self.camera_thread.frame_updated.disconnect()
+            except:
+                pass
+            try:
+                self.camera_thread.stop()
+            except:
+                pass
+
+        # ✅ สร้างใหม่
+        self.camera_thread = CameraThread(camera_id=1)
+        self.camera_thread.frame_updated.connect(self.update_camera_frame)
+        self.camera_thread.camera_ready.connect(self.clear_loading_text)
+        self.camera_thread.start()
+
+    def stop_camera(self):
+        """ เรียกเมื่อต้องการเริ่มกล้อง """
+        if self.camera_thread.isRunning():
+            self.camera_thread.stop()
+        try:
+            self.camera_thread.frame_updated.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        try:
+            self.camera_label.clear()
+            self.camera_label.setText("Loading camera...")
+            self.camera_label.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
+        except Exception as e:
+            print("Error resetting camera label:", e)
+
+    def handle_open(self):
+        self.switch_callback()
+        self.stop_camera()
+        
+    def closeEvent(self, event):
+        self.camera_thread.stop()
+        event.accept()
+
+
     def update_camera_frame(self, image: QImage):
         """ รับภาพจากกล้องแล้วแสดง """
         if not image.isNull():
-            pixmap = QPixmap.fromImage(image).scaled(640, 360, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.camera_label.setScaledContents(True)
+            pixmap = QPixmap.fromImage(image)
             self.camera_label.setPixmap(pixmap)
 
     def clear_loading_text(self):
@@ -185,8 +229,8 @@ class StartPage(QWidget):
     def toggle_camera(self):
         """ ฟังก์ชันเปิด/ปิดกล้อง """
         if self.is_camera_on:
-            self.camera_button.setIcon(qta.icon("fa6s.video-slash", color="red"))  # ปิดกล้อง
+            self.camera_button.setIcon(qta.icon("fa5s.video-slash", color="red"))  # ปิดกล้อง
         else:
-            self.camera_button.setIcon(qta.icon("fa6s.video", color="black"))  # เปิดกล้อง
+            self.camera_button.setIcon(qta.icon("fa5s.video", color="black"))  # เปิดกล้อง
 
         self.is_camera_on = not self.is_camera_on

@@ -3,9 +3,10 @@ from PyQt5.QtWidgets import (
     QFrame, QLineEdit, QPushButton
 )
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 
-from scripts import CameraThread, generate_order
+
+from scripts import CameraThread, generate_order, generate_tts_from_text, WhisperASR
 
 class ChatPage(QWidget):
     def __init__(self, show_start_page_callback):
@@ -54,7 +55,7 @@ class ChatPage(QWidget):
         self.barista_camera_thread = CameraThread(camera_id=0)
         self.barista_camera_thread.frame_updated.connect(self.update_barista_camera_frame)
         self.barista_camera_thread.camera_ready.connect(self.clear_barista_loading_text)
-        self.barista_camera_thread.start()
+        # self.barista_camera_thread.start()
 
         barista_frame = QFrame()
         barista_frame.setObjectName("chatBubbleBarista")
@@ -86,7 +87,7 @@ class ChatPage(QWidget):
         self.user_camera_thread = CameraThread(camera_id=1)
         self.user_camera_thread.frame_updated.connect(self.update_user_camera_frame)
         self.user_camera_thread.camera_ready.connect(self.clear_user_loading_text)
-        self.user_camera_thread.start()
+        # self.user_camera_thread.start()
 
         user_frame = QFrame()
         user_frame.setObjectName("chatBubbleUser")
@@ -95,11 +96,13 @@ class ChatPage(QWidget):
         user_name = QLabel("คุณ (คนสั่ง)")
         user_name.setObjectName("chatNameUser")
 
-        user_text = QLabel("เอาชาเขียวเย็น หวานน้อย 1 แก้วครับ")
-        user_text.setObjectName("chatTextUser")
+        self.user_text = QLabel("กำลังรอเสียงพูด...")
+        self.user_text.setObjectName("chatTextUser")
+        self.user_text.setWordWrap(True)
+        self.user_text.setMinimumWidth(600)
 
         user_frame_layout.addWidget(user_name)
-        user_frame_layout.addWidget(user_text)
+        user_frame_layout.addWidget(self.user_text)
 
         user_chat_layout.addWidget(self.user_img)
         user_chat_layout.addWidget(user_frame)
@@ -107,6 +110,15 @@ class ChatPage(QWidget):
         chat_layout.addLayout(barista_chat_layout)
         chat_layout.addLayout(user_chat_layout)
         main_layout.addLayout(chat_layout)
+
+        # ✅ Start Whisper ASR
+        # self.whisper = WhisperASR()
+        # self.whisper.result_ready.connect(self.on_transcript)
+        # self.asr_timer = QTimer()
+        # self.asr_timer.setInterval(5000)  # หรือปรับความถี่ตามที่ต้องการ
+        # self.asr_timer.timeout.connect(self.whisper.process_audio)
+        # self.whisper.start()
+        # self.asr_timer.start()
 
         self.setLayout(main_layout)
 
@@ -125,24 +137,50 @@ class ChatPage(QWidget):
     def closeEvent(self, event):
         self.user_camera_thread.stop()
         self.barista_camera_thread.stop()
+        # self.whisper.stop()
+        # self.asr_timer.stop()
+
         event.accept()
 
     def on_back_button_click(self):
         self.user_camera_thread.stop()
+        self.barista_camera_thread.stop()
+        # self.whisper.stop()
+        # self.asr_timer.stop()
 
         # self.user_camera_thread.frame_updated.disconnect()
 
+        # 2. ล้างภาพ User (กัน error)
         try:
             self.user_camera_thread.frame_updated.disconnect()
-            # 3. ล้างภาพจาก QLabel
+        except (TypeError, RuntimeError):
+            pass
+        try:
             self.user_img.clear()
             self.user_img.setText("Loading camera...")
             self.user_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
-        except TypeError:
-            # Signal อาจถูก disconnect ไปแล้ว หรือไม่มีการเชื่อม
+        except Exception:
+            pass
+
+        # 3. ล้างภาพ Barista (กัน error)
+        try:
+            self.barista_camera_thread.frame_updated.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        try:
+            self.barista_img.clear()
+            self.barista_img.setText("Loading camera...")
+            self.barista_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
+        except Exception:
             pass
 
         self.show_start_page_callback()
+
+    
+    # def on_transcript(self, text):
+    #     print("ถอดเสียงได้:", text)
+    #     self.user_text.setText(text)
+
 
     def handle_speak(self):
         text = self.barista_input.text().strip()
@@ -150,3 +188,4 @@ class ChatPage(QWidget):
             words = text.split()
             sentence = generate_order(words)
             self.barista_text.setText(sentence)
+            generate_tts_from_text(sentence)  

@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QStackedWidget
+    QApplication, QMainWindow, QStackedWidget, QMessageBox
 )
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import Qt
@@ -40,6 +40,7 @@ class MainApp(QMainWindow):
     def show_start_page(self):
         """เปลี่ยนไปหน้า StartPage"""
         self.stack.setCurrentWidget(self.start_page)
+        self.start_page.start_camera()
 
     def keyPressEvent(self, event: QKeyEvent):
         """เช็คการกด F11 เพื่อสลับ Fullscreen"""
@@ -50,6 +51,19 @@ class MainApp(QMainWindow):
             else:
                 self.showFullScreen()
             self.is_fullscreen = not self.is_fullscreen
+
+    def closeEvent(self, event):
+        reply = QMessageBox.question(
+            self, 'ยืนยันการปิด', 'คุณแน่ใจหรือไม่ว่าต้องการออก?',
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self.start_page.stop_camera()
+            event.accept()
+        else:
+            event.ignore()
+
 
 # เรียกใช้งานแอป
 app = QApplication([])
