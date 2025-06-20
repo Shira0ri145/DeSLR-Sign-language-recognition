@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QPushButton, QFrame, QSpacerItem, QSizePolicy, QMessageBox
 )
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QTimer
 import qtawesome as qta
 from scripts import CameraThread
 
@@ -12,21 +12,22 @@ class StartPage(QWidget):
         super().__init__()
 
         self.switch_callback = switch_callback
+        self.is_camera_on = True
 
-        # Layout หลักทั้งหมด
+         # --- Main layout ---
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(10)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # ✅ ให้ทุกอย่างชิดบน
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop) 
 
-        # --- ส่วนหัวข้อความ ---
+        # --- Header section ---
         header_layout = QHBoxLayout()
         header_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # ✅ ใช้ HTML และ Rich Text เพื่อกำหนดสีให้ "SLR"
+        # Use HTML and RichText to style "SLR"
         title_label = QLabel('<span style="color: white;">De</span><span style="color: #C2FCEA;">SLR</span>')
         title_label.setObjectName("mainTitle")
-        title_label.setTextFormat(Qt.TextFormat.RichText)  # ✅ ใช้ RichText เพื่อให้ HTML ทำงาน
+        title_label.setTextFormat(Qt.TextFormat.RichText)
 
         subtitle_label = QLabel(
             '<span style="color: white;">ยินดีต้อนรับเข้าสู่ </span>'
@@ -40,29 +41,27 @@ class StartPage(QWidget):
         header_layout.addWidget(subtitle_label)
         header_layout.setSpacing(10)
 
-        # ✅ ใส่ Header ลงใน Layout หลัก
+        # Add header to main layout
         main_layout.addLayout(header_layout)
 
         self.setLayout(main_layout)
 
-        # --- Layout คอนเทนต์หลัก ---
+        #  --- Main content layout ---
         content_layout = QHBoxLayout()
         content_layout.setContentsMargins(0, 20, 0, 0)
         content_layout.setSpacing(20)
 
-        # --- ซ้าย: คู่มือใช้งาน ---
+        # Left: Usage guide
         guide_frame = QFrame()
         guide_layout = QVBoxLayout()
         guide_title = QLabel("เริ่มต้นใช้งานง่ายๆ เพียง “สวัสดี”")
         guide_title.setObjectName("guideTitle")
 
-        # ✅ คำว่า "ภาษามือสวัสดีง่ายๆ"
         hand_sign_label = QLabel("ภาษามือสวัสดีง่ายๆ")
         hand_sign_label.setObjectName("handSignText")
 
-        # ✅ Layout สำหรับ Step 1 และ Step 2 (Step 1 อยู่ซ้าย Step 2 อยู่ขวาและต่ำลง)
+        # Layout for Step 1 and Step 2
         step_layout = QHBoxLayout()
-
         step1_layout = QVBoxLayout()
         step1 = QLabel("Step 1: มือแตะหน้าผาก")
         step1.setObjectName("guideStep")
@@ -83,16 +82,13 @@ class StartPage(QWidget):
         step2_layout.addWidget(step2_img)
         step2_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # ✅ ใช้ QVBoxLayout ให้ Step 2 อยู่ต่ำกว่า Step 1
         step2_wrapper = QVBoxLayout()
         step2_wrapper.addStretch()
         step2_wrapper.addLayout(step2_layout)
 
-        # ✅ เพิ่ม Step 1 และ Step 2 เข้า Layout แนวนอน
         step_layout.addLayout(step1_layout)
         step_layout.addLayout(step2_wrapper)
 
-        # ✅ Step 3 แยกด้านล่าง
         step3 = QLabel("Step 3: จากนั้น ก็สั่งเมนูได้เลย")
         step3.setObjectName("guideStep")
         step3_img = QLabel()
@@ -105,7 +101,6 @@ class StartPage(QWidget):
         guide_frame.setLayout(guide_layout)
         guide_frame.setObjectName("guideFrame")
 
-        # --- ขวา: กล้อง + ปุ่มวางสาย ---
         camera_frame = QFrame()
         camera_layout = QVBoxLayout()
         camera_frame.setObjectName("cameraFrame")
@@ -115,18 +110,15 @@ class StartPage(QWidget):
         self.camera_label.setFixedSize(640, 360)
         self.camera_label.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
 
-        self.camera_thread = CameraThread(camera_id=1)
+        self.camera_thread = CameraThread(camera_id=0, use_mediapipe=True)
         self.camera_thread.frame_updated.connect(self.update_camera_frame)
         self.camera_thread.camera_ready.connect(self.clear_loading_text)
+        self.camera_thread.detected_label.connect(self.check_detected_label)
         self.camera_thread.start()
 
         top_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        # ✅ สถานะกล้อง (เปิด/ปิด)
-        self.is_camera_on = True
-
-        # ✅ ปุ่มใส (ไมค์ และ กล้อง)
         mic_button = QPushButton()
         mic_button.setIcon(qta.icon("fa5s.microphone", color="black"))
         mic_button.setObjectName("micButton")
@@ -171,8 +163,13 @@ class StartPage(QWidget):
         main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
 
+    def check_detected_label(self, label):
+        if label == "hello":
+            self.handle_open()
+            print("go Chat")
+
+    # Create and start a new camera thread
     def start_camera(self):
-        """ สร้าง CameraThread ใหม่ และเปิดกล้อง """
         if self.camera_thread is not None:
             try:
                 self.camera_thread.frame_updated.disconnect()
@@ -182,15 +179,14 @@ class StartPage(QWidget):
                 self.camera_thread.stop()
             except:
                 pass
-
-        # ✅ สร้างใหม่
-        self.camera_thread = CameraThread(camera_id=1)
+        self.camera_thread = CameraThread(camera_id=2, use_mediapipe=True)
         self.camera_thread.frame_updated.connect(self.update_camera_frame)
         self.camera_thread.camera_ready.connect(self.clear_loading_text)
+        self.camera_thread.detected_label.connect(self.check_detected_label)
         self.camera_thread.start()
 
+    # Called when you want to stop the camera
     def stop_camera(self):
-        """ เรียกเมื่อต้องการเริ่มกล้อง """
         if self.camera_thread.isRunning():
             self.camera_thread.stop()
         try:
@@ -205,32 +201,29 @@ class StartPage(QWidget):
             print("Error resetting camera label:", e)
 
     def handle_open(self):
-        self.switch_callback()
         self.stop_camera()
+        QTimer.singleShot(300, self.switch_callback)
+        
         
     def closeEvent(self, event):
         self.camera_thread.stop()
         event.accept()
 
 
+    # Receive and display camera image
     def update_camera_frame(self, image: QImage):
-        """ รับภาพจากกล้องแล้วแสดง """
         if not image.isNull():
             self.camera_label.setScaledContents(True)
             pixmap = QPixmap.fromImage(image)
             self.camera_label.setPixmap(pixmap)
 
     def clear_loading_text(self):
-        """ ลบข้อความ Loading กล้องออกเมื่อกล้องพร้อม """
         self.camera_label.setText("")
 
-
-
     def toggle_camera(self):
-        """ ฟังก์ชันเปิด/ปิดกล้อง """
         if self.is_camera_on:
-            self.camera_button.setIcon(qta.icon("fa5s.video-slash", color="red"))  # ปิดกล้อง
+            self.camera_button.setIcon(qta.icon("fa5s.video-slash", color="red")) 
         else:
-            self.camera_button.setIcon(qta.icon("fa5s.video", color="black"))  # เปิดกล้อง
+            self.camera_button.setIcon(qta.icon("fa5s.video", color="black"))
 
         self.is_camera_on = not self.is_camera_on
