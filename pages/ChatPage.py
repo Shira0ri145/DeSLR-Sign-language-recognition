@@ -52,7 +52,8 @@ class ChatPage(QWidget):
         self.barista_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
         self.barista_img.setObjectName("chatImage")
 
-        self.barista_camera_thread = CameraThread(camera_id=0)
+        # self.barista_camera_thread = CameraThread(camera_id=0)
+        self.barista_camera_thread = CameraThread(camera_id=0, use_mediapipe=True)
         self.barista_camera_thread.frame_updated.connect(self.update_barista_camera_frame)
         self.barista_camera_thread.camera_ready.connect(self.clear_barista_loading_text)
         # self.barista_camera_thread.start()
@@ -84,7 +85,8 @@ class ChatPage(QWidget):
         self.user_img.setFixedSize(280, 180)
         self.user_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
 
-        self.user_camera_thread = CameraThread(camera_id=1)
+        # self.user_camera_thread = CameraThread(camera_id=2)
+        self.user_camera_thread = CameraThread(camera_id=2, use_mediapipe=False)
         self.user_camera_thread.frame_updated.connect(self.update_user_camera_frame)
         self.user_camera_thread.camera_ready.connect(self.clear_user_loading_text)
         # self.user_camera_thread.start()
@@ -122,6 +124,32 @@ class ChatPage(QWidget):
 
         self.setLayout(main_layout)
 
+    def chatpagestart_camera(self):
+        # ---- STOP old cam
+        if self.barista_camera_thread and self.user_camera_thread is not None:
+            try:
+                self.user_camera_thread.frame_updated.disconnect()
+                self.barista_camera_thread.frame_updated.disconnect()
+            except Exception as e:
+                print("Barista camera stop error:", e)
+
+            try:
+                self.barista_camera_thread.stop()
+                self.user_camera_thread.stop()
+            except Exception as e:
+                print("User camera stop error:", e)
+             # ---- START new cam
+        self.barista_camera_thread = CameraThread(camera_id=0, use_mediapipe=False)
+        self.barista_camera_thread.frame_updated.connect(self.update_barista_camera_frame)
+        self.barista_camera_thread.camera_ready.connect(self.clear_barista_loading_text)
+        self.barista_camera_thread.start()
+
+        self.user_camera_thread = CameraThread(camera_id=2, use_mediapipe=False)
+        self.user_camera_thread.frame_updated.connect(self.update_user_camera_frame)
+        self.user_camera_thread.camera_ready.connect(self.clear_user_loading_text)
+        self.user_camera_thread.start()
+        
+
     def update_barista_camera_frame(self, image: QImage):
         self.barista_img.setPixmap(QPixmap.fromImage(image))
 
@@ -143,39 +171,29 @@ class ChatPage(QWidget):
         event.accept()
 
     def on_back_button_click(self):
-        self.user_camera_thread.stop()
-        self.barista_camera_thread.stop()
-        # self.whisper.stop()
-        # self.asr_timer.stop()
+        camera_threads = [
+            (self.user_camera_thread, self.user_img),
+            (self.barista_camera_thread, self.barista_img)
+        ]
+        for thread, label in camera_threads:
+            try:
+                if thread.isRunning():
+                    thread.stop()
+            except:
+                pass
 
-        # self.user_camera_thread.frame_updated.disconnect()
+            try:
+                thread.frame_updated.disconnect()
+            except (TypeError, RuntimeError):
+                pass
 
-        # 2. ล้างภาพ User (กัน error)
-        try:
-            self.user_camera_thread.frame_updated.disconnect()
-        except (TypeError, RuntimeError):
-            pass
-        try:
-            self.user_img.clear()
-            self.user_img.setText("Loading camera...")
-            self.user_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
-        except Exception:
-            pass
-
-        # 3. ล้างภาพ Barista (กัน error)
-        try:
-            self.barista_camera_thread.frame_updated.disconnect()
-        except (TypeError, RuntimeError):
-            pass
-        try:
-            self.barista_img.clear()
-            self.barista_img.setText("Loading camera...")
-            self.barista_img.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
-        except Exception:
-            pass
-
-        self.show_start_page_callback()
-
+            try:
+                label.clear()
+                label.setText("Loading camera...")
+                label.setStyleSheet("color: gray; background-color: #111; border-radius: 5px;")
+            except Exception:
+                pass
+        QTimer.singleShot(300, self.show_start_page_callback)
     
     # def on_transcript(self, text):
     #     print("ถอดเสียงได้:", text)
