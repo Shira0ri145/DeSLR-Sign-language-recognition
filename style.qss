@@ -1,0 +1,149 @@
+/* BG */
+QMainWindow {
+    background: qlineargradient(
+        x1: 0.4, y1: 0.5, x2: 0.92, y2: 0.8,
+        stop: 0 #269272, stop: 1 #174A4E
+    );
+}
+
+/* Titles */
+#mainTitle {
+    font-size: 40px; font-weight: bold; color: #FFFFFF;
+    padding-right: 10px; padding-left: 20px;
+}
+#subTitle {
+    font-size: 32px; font-weight: bold; color: #FFFFFF;
+}
+
+/* Back button (StartPage) */
+#backButton {
+    background: white;
+    border: 1px solid #BFD6D7;
+    color: #174A4E;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-weight: 600;
+}
+#backButton:hover {
+    background: #EEF6F7;
+}
+
+/* Chat panel */
+#chatFrame {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #E5F8F9, stop:1 #D5DEDE);
+    border-radius: 16px;
+}
+#chatTitle {
+    color: #2E7D32; font-size: 18px; font-weight: bold;
+}
+#chatScroll {
+    border: none;
+    background: transparent;
+}
+
+#chatNameBarista, #chatNameUser {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6C7070;
+}
+
+/* Bubbles */
+#chatBubbleBarista {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #E5F8F9, stop:1 #D5DEDE);
+    padding: 12px 16px;
+    border-top-left-radius: 16px; border-top-right-radius: 16px; border-bottom-right-radius: 16px;
+    max-width: 520px; color: #505050; font-size: 16px;
+}
+#chatBubbleUser {
+    background: #269272;
+    padding: 12px 16px;
+    border-top-left-radius: 16px; border-top-right-radius: 16px; border-bottom-left-radius: 16px;
+    max-width: 520px; color: #FFFFFF; font-size: 16px;
+}
+
+/* Chat input & buttons */
+#chatInput {
+    background: white; border-radius: 10px; padding: 10px 12px;
+    border: 1px solid #BFD6D7; font-size: 16px;
+}
+#sendRightButton, #sendLeftButton, #micButton, #cameraButton {
+    background: white; border: 1px solid #BFD6D7; border-radius: 8px;
+}
+#sendRightButton:hover, #sendLeftButton:hover, #micButton:hover, #cameraButton:hover {
+    background: #EEF6F7;
+}
+
+/* Camera panel */
+#cameraFrame {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #E5F8F9, stop:1 #D5DEDE);
+    border-radius: 16px;
+}
+
+/* ===== Home page ===== */
+#homeCard {
+    background: #0E3A46;
+    border-radius: 20px;
+    border: 2px solid rgba(255,255,255,0.85); /* กรอบสีขาว */
+}
+
+#homeAvatar {
+    border-radius: 28px;             /* ให้รูปเป็นวงกลม */
+    background: #137170;             /* เผื่อไม่มีรูป */
+}
+
+#homeTitle {
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+#homeSub {
+    color: #C2FCEA;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#homeUnderline {
+    background: rgba(255,255,255,0.25);
+}
+
+#homeStartBtn {
+    background: #0AA190;
+    border: 2px solid #FFFFFF;       /* ขาวให้เข้ากับกรอบ */
+    border-radius: 22px;
+}
+#homeStartBtn:pressed {
+    background: #0A8C7E;   /* สีเข้มลงนิดหน่อย */
+}
+
+#menuButton {
+  background: white; border: 1px solid #BFD6D7; border-radius: 8px;
+  padding: 6px 12px; font-weight: 600; color: #174A4E;
+}
+#menuButton:hover { background: #EEF6F7; }
+
+#detectTitle { color: #174A4E; font-weight: 700; }
+#detectValue { color: #0E3A46; font-weight: 600; }
+#detectClearButton {
+    background: white; border: 1px solid #BFD6D7; border-radius: 8px; padding: 4px 10px;
+}
+#detectClearButton:hover { background: #EEF6F7; }
+
+/* ===== Quick ask popup ===== */
+QMenu {
+    font-size: 18px;           /* ขยายฟอนต์ */
+    padding: 8px;              /* เว้นรอบๆ เมนู */
+    background: #FFFFFF;       /* พื้นหลัง */
+    border: 1px solid #BFD6D7;
+    border-radius: 8px;
+}
+QMenu::item {
+    padding: 12px 24px;        /* เว้นระยะในแต่ละ item */
+    font-weight: 600;
+    color: #174A4E;
+}
+QMenu::item:selected {
+    background-color: #269272; /* สีเวลาชี้ */
+    color: #FFFFFF;
+    border-radius: 6px;
+}
