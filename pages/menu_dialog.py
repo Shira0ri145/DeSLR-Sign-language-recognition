@@ -1,4 +1,3 @@
-# pages/menu_dialog.py
 from PyQt5.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QWidget
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap
@@ -64,10 +63,10 @@ class ChoiceDialog(QDialog):
 class MenuDialog(QDialog):
     """
     ป๊อปอัปโชว์รูปเมนู + ปุ่มโปร่งใสทับตำแหน่งราคา
-    เมื่อกดจุดหนึ่ง จะถามต่อ 2 ขั้น: (ร้อน/เย็น/ปั่น) แล้ว (ความหวาน)
-    จากนั้น emit ข้อความสั่งครบประโยคกลับไป
+    เลือก (ร้อน/เย็น/ปั่น) -> เลือกความหวาน
+    แล้ว emit (ประโยคสั่งซื้อ, ราคา) กลับ
     """
-    selected = pyqtSignal(str)  # ส่ง "ขอสั่ง ... ครับ" กลับ
+    selected = pyqtSignal(str, int)  # ส่ง "(ข้อความสั่ง)", ราคา
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -107,7 +106,7 @@ class MenuDialog(QDialog):
                 self._pix.scaled(self.img_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             )
 
-        # ปุ่มทับบนรูป (hotspots) – ค่าพิกัดแบบสัดส่วนของรูป
+        # ปุ่มทับบนรูป (hotspots) – ค่าเป็นสัดส่วนของรูป
         self.hotspot_buttons = []
         self.hotspots = [
             # x%, y%, w%, h%, label, menu_name
@@ -123,7 +122,7 @@ class MenuDialog(QDialog):
 
     # ---------- helper ----------
     def _strip_meta(self, s: str) -> str:
-        """ตัดข้อความในวงเล็บเช่น ' (55)' หรือ ' (50%)' ออก เหลือแค่คำหลัก"""
+        """ตัดข้อความในวงเล็บ เช่น ' (55)' หรือ ' (50%)' ออก เหลือแค่คำหลัก"""
         return s.split('(')[0].strip()
 
     # ---------- Layout & hotspots ----------
@@ -137,8 +136,7 @@ class MenuDialog(QDialog):
 
     def _rebuild_hotspots(self):
         for b in self.hotspot_buttons:
-            b.setParent(None)
-            b.deleteLater()
+            b.setParent(None); b.deleteLater()
         self.hotspot_buttons.clear()
 
         if self._pix.isNull():
@@ -173,11 +171,14 @@ class MenuDialog(QDialog):
 
     # ---------- Flow: menu -> temp -> sweetness ----------
     def _start_flow(self, menu_name: str):
-        # 1) เลือกรูปแบบ
+        # 1) เลือกรูปแบบ + ราคา
+        #    จะเก็บราคา: ร้อน=50, เย็น=55, ปั่น=60
         temp_dlg = ChoiceDialog("เลือกรูปแบบ (ร้อน/เย็น/ปั่น)", ["ร้อน (50)", "เย็น (55)", "ปั่น (60)"], self)
         if temp_dlg.exec_() != QDialog.Accepted or not temp_dlg.choice:
             return
-        temp = self._strip_meta(temp_dlg.choice)  # ตัดราคาออก
+        temp = self._strip_meta(temp_dlg.choice)
+        price_map = {"ร้อน": 50, "เย็น": 55, "ปั่น": 60}
+        price = price_map.get(temp, 0)
 
         # 2) เลือกระดับความหวาน
         sweet_dlg = ChoiceDialog(
@@ -187,9 +188,11 @@ class MenuDialog(QDialog):
         )
         if sweet_dlg.exec_() != QDialog.Accepted or not sweet_dlg.choice:
             return
-        sweet = self._strip_meta(sweet_dlg.choice)  # ตัด % ออก
+        sweet = self._strip_meta(sweet_dlg.choice)
 
-        # 3) สร้างประโยคสั่งซื้อและส่งออก (ไม่เอาราคา/เปอร์เซ็นต์)
+        # 3) สร้างประโยคสั่งซื้อ (ไม่เอาราคา/เปอร์เซ็นต์ในประโยค)
         text = f"ขอสั่ง{menu_name}{temp}{sweet} ครับ"
-        self.selected.emit(text)
+
+        # ส่งออกทั้ง "ประโยค" + "ราคา" ให้ StartPage
+        self.selected.emit(text, price)
         self.accept()
