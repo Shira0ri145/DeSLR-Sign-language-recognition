@@ -15,7 +15,7 @@ class CameraThread(QThread):
     camera_ready  = pyqtSignal()           # แจ้งกล้องพร้อม
     detected_label = pyqtSignal(str)       # (ยังคงไว้ให้เผื่อ UI ใช้)
 
-    def __init__(self, camera_id=0, draw_landmarks=True, threshold=0.90, seq_len=25):
+    def __init__(self, camera_id=0, draw_landmarks=True, threshold=0.80, seq_len=25):
         super().__init__()
         self.camera_id = camera_id
         self.draw_landmarks = draw_landmarks
@@ -58,8 +58,8 @@ class CameraThread(QThread):
             self.cap = cv2.VideoCapture(self.camera_id)
 
         if self.cap is not None:
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 270)
 
         if self.cap is None or not self.cap.isOpened():
             self.running = False

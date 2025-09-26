@@ -17,7 +17,7 @@ class MainApp(QMainWindow):
         # โหลด QSS
         self.setStyleSheet(open("style.qss", encoding="utf-8").read())
 
-        # เริ่มแบบหน้าต่างปกติ (ไม่เต็มจอ) และกำหนดขนาดเริ่มต้น
+        # ขนาดเริ่มต้นเมื่อออกจากโหมดเต็มจอ
         self.default_size = (1024, 600)
         self.resize(*self.default_size)
 
@@ -41,7 +41,7 @@ class MainApp(QMainWindow):
         if event.key() == Qt.Key_F11:
             if self.isFullScreen():
                 self.showNormal()
-                self.resize(*self.default_size)
+                self.resize(*self.default_size)  # กลับมาขนาดปกติที่กำหนด
             else:
                 self.showFullScreen()
         else:
@@ -80,5 +80,6 @@ if __name__ == "__main__":
     app.setApplicationName("DeSLR")
 
     window = MainApp()
-    window.show()  # เริ่มแบบหน้าต่างปกติ
+    window.showFullScreen()  # ← เริ่มแบบเต็มจอทันที
     sys.exit(app.exec())
+

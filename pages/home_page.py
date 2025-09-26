@@ -1,10 +1,10 @@
-# pages/home_page.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QPushButton, QGraphicsDropShadowEffect
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QColor
 import qtawesome as qta
+
 
 class HomePage(QWidget):
     def __init__(self, on_start):
@@ -19,7 +19,7 @@ class HomePage(QWidget):
         # ----- the card -----
         card = QFrame()
         card.setObjectName("homeCard")
-        card.setFixedWidth(780)          # กำหนดความกว้าง เพื่อให้จัดกลางได้สวย
+        card.setFixedWidth(780)
         card.setMinimumHeight(120)
 
         # shadow
@@ -36,10 +36,10 @@ class HomePage(QWidget):
 
         avatar = QLabel()
         avatar.setObjectName("homeAvatar")
-        avatar.setFixedSize(56, 56)
+        avatar.setFixedSize(72, 72)  # ขยายจาก 56 -> 72
         avatar.setPixmap(
             QPixmap("assets/user.png").scaled(
-                56, 56, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                72, 72, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
             )
         )
 
@@ -59,13 +59,14 @@ class HomePage(QWidget):
 
         start_btn = QPushButton()
         start_btn.setObjectName("homeStartBtn")
-        start_btn.setFixedSize(44, 44)
+        start_btn.setFixedSize(64, 64)           # ขยายจาก 44 -> 64 (แตะง่าย)
         start_btn.setIcon(qta.icon("fa5s.video"))
+        start_btn.setIconSize(QSize(28, 28))     # ไอคอนใหญ่ขึ้น
         start_btn.clicked.connect(self.on_start)
 
         card_l.addWidget(avatar)
         card_l.addLayout(text_box, 1)
-        card_l.addStretch(1)  # ดันปุ่มไปขวา
+        card_l.addStretch(1)
         card_l.addWidget(start_btn, 0, Qt.AlignRight | Qt.AlignVCenter)
 
         # ===== Center the card =====
@@ -74,6 +75,6 @@ class HomePage(QWidget):
         row_center.addWidget(card)
         row_center.addStretch(1)
 
-        outer.addStretch(1)          # ดันลงจากด้านบน
-        outer.addLayout(row_center)  # จัดกึ่งกลางแนวนอน
-        outer.addStretch(1)          # ดันขึ้นจากด้านล่าง
+        outer.addStretch(1)
+        outer.addLayout(row_center)
+        outer.addStretch(1)

@@ -2,13 +2,14 @@
 
 from PyQt5.QtWidgets import (
     QLabel, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFrame,
-    QSizePolicy, QLineEdit, QScrollArea, QMessageBox, QMenu
+    QSizePolicy, QLineEdit, QScrollArea, QMessageBox, QMenu,
+    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
 )
 from PyQt5.QtGui import QPixmap, QImage
-    # ^ if you don't use QImage directly here, it's still fine because update_camera_frame uses it
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QSize
 import qtawesome as qta
 import sip  # type: ignore
+import re
 
 from concurrent.futures import ThreadPoolExecutor
 from scripts.camera_thread import CameraThread
@@ -27,13 +28,16 @@ class StartPage(QWidget):
         self._bubbles = []
         self._last_sender = None
 
-        # ภาษามือที่พบ (กันซ้ำจนกว่าจะกดส่ง)
+        # กันซ้ำคำภาษามือจนกว่าจะกดส่ง
         self._detected_tokens = []
         self._detected_set = set()
 
         # ยอดสรุปเมนู
         self._order_total = 0
         self._has_order = False
+
+        # เก็บรายการเมนูสำหรับยกเลิก: [{"name": str, "price": int, "bubble": QLabel}, ...]
+        self._orders = []
 
         # ===== Layout =====
         main_layout = QVBoxLayout(self)
@@ -60,7 +64,7 @@ class StartPage(QWidget):
 
         back_btn = QPushButton(qta.icon("fa5s.arrow-left"), "ย้อนกลับ")
         back_btn.setObjectName("backButton")
-        back_btn.setFixedHeight(36)
+        back_btn.setFixedHeight(48)
         back_btn.setToolTip("กลับไปหน้าแรก")
         back_btn.clicked.connect(self.on_back_button_click)
 
@@ -89,13 +93,22 @@ class StartPage(QWidget):
 
         self.menu_btn = QPushButton(qta.icon("fa5s.bars"), "เมนู")
         self.menu_btn.setObjectName("menuButton")
-        self.menu_btn.setFixedHeight(32)
+        self.menu_btn.setFixedHeight(44)
         self.menu_btn.setToolTip("เปิดเมนูเครื่องดื่ม")
         self.menu_btn.clicked.connect(self.open_menu_popup)
+
+        # ปุ่มยกเลิกรายการ (ปิดการใช้งานจนกว่าจะมีการสั่ง)
+        self.cancel_btn = QPushButton(qta.icon("fa5s.minus-circle"), "ยกเลิกรายการ")
+        self.cancel_btn.setObjectName("cancelButton")
+        self.cancel_btn.setFixedHeight(44)
+        self.cancel_btn.setToolTip("ยกเลิกเมนูที่สั่งไว้ (เลือกได้หลายรายการ)")
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.clicked.connect(self.open_cancel_popup)
 
         chat_title_row.addWidget(chat_title)
         chat_title_row.addStretch(1)
         chat_title_row.addWidget(self.menu_btn)
+        chat_title_row.addWidget(self.cancel_btn)
         chat_outer.addLayout(chat_title_row)
 
         self.chat_scroll = QScrollArea()
@@ -124,13 +137,15 @@ class StartPage(QWidget):
         self.quick_btn = QPushButton(qta.icon("fa5s.comment-dots"), "")
         self.quick_btn.setObjectName("quickAskButton")
         self.quick_btn.setToolTip("คำถามสำเร็จรูป (user)")
-        self.quick_btn.setFixedSize(44, 44)
+        self.quick_btn.setFixedSize(56, 56)
+        self.quick_btn.setIconSize(QSize(26, 26))
         self.quick_btn.clicked.connect(self.show_quick_menu)
 
         btn_send_left = QPushButton(qta.icon("fa5s.reply"), "")
         btn_send_left.setObjectName("sendLeftButton")
         btn_send_left.setToolTip("ส่ง (ลูกค้า)")
-        btn_send_left.setFixedSize(44, 44)
+        btn_send_left.setFixedSize(56, 56)
+        btn_send_left.setIconSize(QSize(26, 26))
         btn_send_left.clicked.connect(lambda: self.send_message(sender="user"))
 
         input_row.addWidget(self.input_edit, 1)
@@ -160,15 +175,15 @@ class StartPage(QWidget):
 
         self.btn_detect_delete = QPushButton(qta.icon("fa5s.backspace"), "ลบ")
         self.btn_detect_delete.setObjectName("detectDeleteButton")
-        self.btn_detect_delete.setFixedHeight(28)
+        self.btn_detect_delete.setFixedHeight(44)
         self.btn_detect_delete.setToolTip("ลบคำสุดท้ายที่ตรวจพบ")
         self.btn_detect_delete.clicked.connect(self.delete_last_detected_token)
 
         self.btn_detect_send = QPushButton(qta.icon("fa5s.paper-plane"), "ส่ง")
         self.btn_detect_send.setObjectName("detectSendButton")
-        self.btn_detect_send.setFixedHeight(28)
+        self.btn_detect_send.setFixedHeight(44)
         self.btn_detect_send.setToolTip("ส่งคำที่ตรวจพบไปยังฝั่งบาริสต้า (แปลงเป็นประโยคอัตโนมัติ)")
-        self.btn_detect_send.clicked.connect(self.send_detected_as_barista)  # <- ต้องมีเมธอดนี้
+        self.btn_detect_send.clicked.connect(self.send_detected_as_barista)
 
         detected_row.addWidget(lbl_detect_title)
         detected_row.addWidget(self.lbl_detect_value, 1)
@@ -178,7 +193,7 @@ class StartPage(QWidget):
         # Camera view
         self.camera_label = QLabel("Loading camera...")
         self.camera_label.setAlignment(Qt.AlignCenter)
-        self.camera_label.setFixedSize(560, 315)
+        self.camera_label.setFixedSize(480, 270)
         self.camera_label.setStyleSheet("color: gray; background-color: #111; border-radius: 8px;")
 
         # Control row: left summary, right mic+camera
@@ -187,18 +202,19 @@ class StartPage(QWidget):
 
         self.btn_summary = QPushButton(qta.icon("fa5s.cash-register"), "สรุปยอด")
         self.btn_summary.setObjectName("summaryButton")
-        self.btn_summary.setFixedSize(100, 44)
+        self.btn_summary.setFixedSize(120, 44)
         self.btn_summary.setToolTip("แสดงยอดรวมที่สั่ง")
         self.btn_summary.setEnabled(False)
         self.btn_summary.clicked.connect(self._on_summary_clicked)
 
         mic_button = QPushButton(qta.icon("fa5s.microphone", color="black"), "")
         mic_button.setObjectName("micButton")
-        mic_button.setFixedSize(44, 44)
+        mic_button.setFixedSize(56, 56)
 
         self.camera_button = QPushButton(qta.icon("fa5s.video", color="black"), "")
         self.camera_button.setObjectName("cameraButton")
-        self.camera_button.setFixedSize(44, 44)
+        self.camera_button.setFixedSize(56, 56)
+        self.camera_button.setIconSize(QSize(26, 26))
         self.camera_button.clicked.connect(self.toggle_camera)
 
         control_row.addWidget(self.btn_summary)   # left
@@ -212,12 +228,30 @@ class StartPage(QWidget):
 
         content_layout.addWidget(chat_frame)
         content_layout.addWidget(camera_frame)
-        content_layout.setStretch(0, 45)
-        content_layout.setStretch(1, 55)
+        content_layout.setStretch(0, 60)
+        content_layout.setStretch(1, 40)
         main_layout.addLayout(content_layout)
 
         # TTS executor
         self._tts_executor = ThreadPoolExecutor(max_workers=1)
+
+    # ===== Helpers: ทำชื่อเมนูแบบสั้น (ตัดคำขึ้นต้น/ลงท้าย) =====
+    def _to_concise_name(self, text: str) -> str:
+        if not text:
+            return text
+        s = text.strip()
+        # ตัดคำขึ้นต้นที่มักใช้
+        s = re.sub(r'^(ขอสั่ง|สั่ง|อยากได้|รับ|เอา)\s*', '', s)
+        # ตัดคำลงท้ายสุภาพ/ฟิลเลอร์
+        s = re.sub(r'(ครับ|ค่ะ|คะ|หน่อย|นะ|ได้ไหม|ด้วย)$', '', s).strip()
+        # ตัดอักขระปิดประโยค
+        s = re.sub(r'[!。！？…]+$', '', s).strip()
+        return s or text
+
+    def _format_cancel_item(self, name: str, price: int) -> str:
+        """ใช้ในป๊อปอัปยกเลิก — ชื่อแบบสั้น + ราคา ตัวใหญ่อ่านง่าย"""
+        concise = self._to_concise_name(name)
+        return f"{concise} — {price} บาท"
 
     # ===== Menu popup =====
     def open_menu_popup(self):
@@ -226,13 +260,83 @@ class StartPage(QWidget):
         dlg.exec_()
 
     def _on_menu_selected(self, text: str, price: int):
-        self._add_chat_bubble(text, sender="user")
+        # สร้างบับเบิลฝั่ง user ตามข้อความจริงที่เลือก (จะมี "ขอสั่ง..." ฯลฯ)
+        bubble = self._add_chat_bubble(text, sender="user")
         try:
-            self._order_total += int(price)
+            p = int(price)
+            self._order_total += p
+            # เก็บ bubble เพื่อจะได้แก้เป็น "--ยกเลิกเมนูนี้แล้ว--" ตอนยกเลิก
+            self._orders.append({"name": text, "price": p, "bubble": bubble})
         except Exception:
             pass
         self._has_order = True
         self.btn_summary.setEnabled(True)
+        self.cancel_btn.setEnabled(True)
+
+    # ===== ยกเลิกรายการ popup =====
+    def open_cancel_popup(self):
+        if not self._orders:
+            QMessageBox.information(self, "ยังไม่มีรายการ", "ยังไม่มีเมนูที่สั่งไว้")
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("ยกเลิกรายการที่สั่ง")
+        dlg.resize(640, 560)  # ขยายขนาด popup
+        vbox = QVBoxLayout(dlg)
+
+        lst = QListWidget(dlg)
+        # ทำให้ติ๊กง่ายขึ้น: ตัวอักษร 22px, padding, และ checkbox ใหญ่ขึ้น
+        lst.setStyleSheet("""
+            QListWidget { font-size: 22px; }
+            QListWidget::item { padding: 10px 8px; }
+            QAbstractItemView::indicator, QListView::indicator, QListWidget::indicator {
+                width: 28px; height: 28px;
+            }
+        """)
+
+        for o in self._orders:
+            text = self._format_cancel_item(o['name'], o['price'])
+            item = QListWidgetItem(text)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            item.setCheckState(Qt.Unchecked)
+            lst.addItem(item)
+        vbox.addWidget(lst)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=dlg)
+        vbox.addWidget(btns)
+
+        def on_accept():
+            to_remove_idx = []
+            for i in range(lst.count()):
+                it = lst.item(i)
+                if it.checkState() == Qt.Checked:
+                    to_remove_idx.append(i)
+
+            if not to_remove_idx:
+                dlg.reject()
+                return
+
+            # ลบจากท้ายก่อน และแก้ข้อความบับเบิลของ user ให้เป็น "--ยกเลิกเมนูนี้แล้ว--"
+            for i in reversed(to_remove_idx):
+                order = self._orders[i]
+                bubble = order.get("bubble")
+                if isinstance(bubble, QLabel):
+                    bubble.setText("--ยกเลิกเมนูนี้แล้ว--")
+                    bubble.setStyleSheet("color: #8A8A8A; font-style: italic;")
+                del self._orders[i]
+
+            # คำนวณยอดใหม่ + อัปเดตปุ่ม
+            self._order_total = sum(o["price"] for o in self._orders)
+            self._has_order = len(self._orders) > 0
+            self.btn_summary.setEnabled(self._has_order)
+            self.cancel_btn.setEnabled(self._has_order)
+
+            # ไม่ส่งแชทฝั่งบาริสต้า
+            dlg.accept()
+
+        btns.accepted.connect(on_accept)
+        btns.rejected.connect(dlg.reject)
+        dlg.exec_()
 
     # ===== Chat helpers =====
     def _bubble_max_width(self) -> int:
@@ -261,13 +365,22 @@ class StartPage(QWidget):
             "จ่ายเป็นสแกนจ่าย",
             "จ่ายเป็นเงินสด",
             "จ่ายเป็นบัตรเครดิต",
+            "ล้างแชทสนทนา",  # ✅ เพิ่มข้อที่ 6
         ]
         menu = QMenu(self)
         for p in phrases:
             act = menu.addAction(p)
-            act.triggered.connect(lambda _checked=False, text=p: self._add_chat_bubble(text, sender="user"))
+            act.triggered.connect(lambda _checked=False, text=p: self._on_quick_action(text))
         pos = self.quick_btn.mapToGlobal(self.quick_btn.rect().bottomLeft())
         menu.exec_(pos)
+
+    def _on_quick_action(self, text: str):
+        if text == "ล้างแชทสนทนา":
+            self._reset_orders()
+            self._reset_chat()
+            QMessageBox.information(self, "ล้างแล้ว", "ล้างแชทและรายการสั่งทั้งหมดเรียบร้อย")
+        else:
+            self._add_chat_bubble(text, sender="user")
 
     # ===== สรุปยอด =====
     def _on_summary_clicked(self):
@@ -280,15 +393,16 @@ class StartPage(QWidget):
             self._speak_async(sentence, wav_path="output.wav")
         except Exception as e:
             print(f"[TTS] error: {e}")
-        # ถ้าต้องการรีเซ็ตยอดหลังสรุป ให้ปลดคอมเมนต์ด้านล่าง
+
+        # รีเซ็ตหลังสรุป
         self._order_total = 0
         self._has_order = False
+        self._orders = []
         self.btn_summary.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
 
     # ======= ภาษามือที่พบ -> ส่งให้บาริสต้า =======
     def send_detected_as_barista(self):
-        """รับคำภาษามือ -> validate -> generate_order -> ส่งเป็นฝั่งบาริสต้า + พูด TTS
-           กรณี "สั่งไม่ถูกครับ" ให้ขึ้น Popup และไม่ส่งเข้าแชท/ไม่ทำ TTS"""
         if not self._detected_tokens:
             QMessageBox.information(self, "ว่างเปล่า", "ยังไม่มีคำภาษามือให้ส่ง")
             return
@@ -338,7 +452,8 @@ class StartPage(QWidget):
         except Exception as e:
             print(f"[TTS] submit error: {e}")
 
-    def _add_chat_bubble(self, text: str, sender: str):
+    def _add_chat_bubble(self, text: str, sender: str) -> QLabel:
+        """เพิ่มบับเบิลและคืน QLabel เพื่อให้แก้ไขได้ภายหลัง (ใช้ตอนยกเลิก)"""
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(8)
@@ -377,6 +492,7 @@ class StartPage(QWidget):
         self.chat_container.adjustSize()
         QTimer.singleShot(0, self._scroll_to_bottom)
         QTimer.singleShot(30, self._scroll_to_bottom)
+        return bubble
 
     def resizeEvent(self, event):
         maxw = self._bubble_max_width()
@@ -437,8 +553,10 @@ class StartPage(QWidget):
 
     def update_camera_frame(self, image: QImage):
         if not image.isNull():
-            self.camera_label.setScaledContents(True)
-            self.camera_label.setPixmap(QPixmap.fromImage(image))
+            pix = QPixmap.fromImage(image).scaled(
+                self.camera_label.size(), Qt.KeepAspectRatio, Qt.FastTransformation
+            )
+            self.camera_label.setPixmap(pix)
 
     def clear_loading_text(self):
         self.camera_label.setText("")
@@ -497,6 +615,14 @@ class StartPage(QWidget):
         self._last_sender = None
         self.input_edit.clear()
         QTimer.singleShot(0, self._scroll_to_bottom)
+
+    def _reset_orders(self):
+        """รีเซ็ตสถานะการสั่งทั้งหมดให้เหมือนเริ่มใหม่ (ไม่ยุ่งกับกล้อง/ภาษามือ)"""
+        self._order_total = 0
+        self._has_order = False
+        self._orders = []
+        self.btn_summary.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
 
     def on_back_button_click(self):
         reply = QMessageBox.question(
